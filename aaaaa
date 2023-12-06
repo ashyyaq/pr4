@@ -1,0 +1,102 @@
+import sqlite3
+from getpass import getpass
+
+class Database:
+    def __init__(self):
+        self.conn = sqlite3.connect('fitness_club.db')
+        self.cursor = self.conn.cursor()
+
+        self.cursor.execute(
+            "CREATE TABLE IF NOT EXISTS clients (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, age INTEGER, email TEXT UNIQUE, password TEXT)")
+        self.cursor.execute(
+            "CREATE TABLE IF NOT EXISTS trainers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, specialty TEXT)")
+        self.cursor.execute(
+            "CREATE TABLE IF NOT EXISTS memberships (id INTEGER PRIMARY KEY AUTOINCREMENT, client_id INTEGER, trainer_id INTEGER, start_date TEXT, end_date TEXT)")
+        self.cursor.execute(
+            "CREATE TABLE IF NOT EXISTS workouts (id INTEGER PRIMARY KEY AUTOINCREMENT, trainer_id INTEGER, client_id INTEGER, date TEXT, duration INTEGER, FOREIGN KEY (trainer_id) REFERENCES trainers(id), FOREIGN KEY (client_id) REFERENCES clients(id))")
+
+        self.conn.commit()
+
+    def add_client(self, name, age, email, password):
+        query = "INSERT INTO clients (name, age, email, password) VALUES (?, ?, ?, ?)"
+        self.cursor.execute(query, (name, age, email, password))
+        self.conn.commit()
+
+    def add_trainer(self, name, specialty):
+        query = "INSERT INTO trainers (name, specialty) VALUES (?, ?)"
+        self.cursor.execute(query, (name, specialty))
+        self.conn.commit()
+
+    def add_membership(self, client_id, trainer_id, start_date, end_date):
+        query = "INSERT INTO memberships (client_id, trainer_id, start_date, end_date) VALUES (?, ?, ?, ?)"
+        self.cursor.execute(query, (client_id, trainer_id, start_date, end_date))
+        self.conn.commit()
+
+    def add_workout(self, trainer_id, client_id, date, duration):
+            query = "INSERT INTO workouts (trainer_id, client_id, date, duration) VALUES (?, ?, ?, ?)"
+            self.cursor.execute(query, (trainer_id, client_id, date, duration))
+            self.conn.commit()
+
+    def get_client_by_email(self, email):
+        query = "SELECT * FROM clients WHERE email = ?"
+        self.cursor.execute(query, (email,))
+        client = self.cursor.fetchone()
+        return client
+
+    def get_client_by_email(self, email):
+        query = "SELECT * FROM clients WHERE email = ?"
+        self.cursor.execute(query, (email,))
+        client = self.cursor.fetchone()
+        return client
+
+    def get_trainer_by_id(self, trainer_id):
+        query = "SELECT * FROM trainers WHERE id = ?"
+        self.cursor.execute(query, (trainer_id,))
+        trainer = self.cursor.fetchone()
+        return trainer
+
+    def get_membership_by_client(self, client_id):
+        query = "SELECT * FROM memberships WHERE client_id = ?"
+        self.cursor.execute(query, (client_id,))
+        memberships = self.cursor.fetchall()
+        return memberships
+
+class Client:
+    def __init__(self, name, age, email, password):
+        self.name = name
+        self.age = age
+        self.email = email
+        self.password = password
+
+    def register(self, db):
+        db.add_client(self.name, self.age, self.email, self.password)
+        print("Регистрация прошла успешно.")
+
+    @staticmethod
+    def login(db):
+        email = input("Введите email: ")
+        password = getpass("Введите пароль: ")
+
+        client = db.get_client_by_email(email)
+
+        if client is None:
+            print("Клиент с таким email не найден.")
+        elif client[4] == password:
+            print("Авторизация прошла успешно.")
+        else:
+            print("Неправильный пароль.")
+
+db = Database()
+
+db.add_client("Иван Иванов", 30, "ivan@example.com", "password")
+db.add_trainer("Анна Смирнова", "Функциональный тренинг")
+db.add_membership(1, 1, "2022-01-01", "2022-12-31")
+db.add_workout(1, 1, "2022-01-01", 60)
+
+workouts_by_trainer = db.get_workout_by_trainer(1)
+workouts_by_client = db.get_workout_by_client(1)
+
+print(workouts_by_trainer)
+print(workouts_by_client)
+
+Client.login(db)
