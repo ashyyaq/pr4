@@ -1,7 +1,7 @@
 import sqlite3
-from getpass import getpass
+import re
 
-class Database:
+class FitnClub:
     def __init__(self):
         self.conn = sqlite3.connect('fitness_club.db')
         self.cursor = self.conn.cursor()
@@ -18,6 +18,8 @@ class Database:
         self.conn.commit()
 
     def add_client(self, name, age, email, password):
+        if not self.validate_email(email):
+            raise ValueError("Неверный формат электронной почты")
         query = "INSERT INTO clients (name, age, email, password) VALUES (?, ?, ?, ?)"
         self.cursor.execute(query, (name, age, email, password))
         self.conn.commit()
@@ -33,70 +35,41 @@ class Database:
         self.conn.commit()
 
     def add_workout(self, trainer_id, client_id, date, duration):
-            query = "INSERT INTO workouts (trainer_id, client_id, date, duration) VALUES (?, ?, ?, ?)"
-            self.cursor.execute(query, (trainer_id, client_id, date, duration))
-            self.conn.commit()
+        query = "INSERT INTO workouts (trainer_id, client_id, date, duration) VALUES (?, ?, ?, ?)"
+        self.cursor.execute(query, (trainer_id, client_id, date, duration))
+        self.conn.commit()
 
-    def get_client_by_email(self, email):
-        query = "SELECT * FROM clients WHERE email = ?"
-        self.cursor.execute(query, (email,))
-        client = self.cursor.fetchone()
-        return client
-
-    def get_client_by_email(self, email):
-        query = "SELECT * FROM clients WHERE email = ?"
-        self.cursor.execute(query, (email,))
-        client = self.cursor.fetchone()
-        return client
-
-    def get_trainer_by_id(self, trainer_id):
-        query = "SELECT * FROM trainers WHERE id = ?"
-        self.cursor.execute(query, (trainer_id,))
-        trainer = self.cursor.fetchone()
-        return trainer
-
-    def get_membership_by_client(self, client_id):
-        query = "SELECT * FROM memberships WHERE client_id = ?"
-        self.cursor.execute(query, (client_id,))
-        memberships = self.cursor.fetchall()
-        return memberships
-
-class Client:
-    def __init__(self, name, age, email, password):
-        self.name = name
-        self.age = age
-        self.email = email
-        self.password = password
-
-    def register(self, db):
-        db.add_client(self.name, self.age, self.email, self.password)
-        print("Регистрация прошла успешно.")
-
-    @staticmethod
-    def login(db):
-        email = input("Введите email: ")
-        password = getpass("Введите пароль: ")
-
-        client = db.get_client_by_email(email)
-
-        if client is None:
-            print("Клиент с таким email не найден.")
-        elif client[4] == password:
-            print("Авторизация прошла успешно.")
+    def validate_email(self, email):
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if re.match(pattern, email):
+            return True
         else:
-            print("Неправильный пароль.")
+            return False
 
-db = Database()
+    def register(self, name, age, email, password):
+        try:
+            self.add_client(name, age, email, password)
+            print("Вы успешно зарегистрировались!")
+        except sqlite3.IntegrityError:
+            print("Произошла ошибка. Пользователь с таким email уже существует.")
 
-db.add_client("Иван Иванов", 30, "ivan@example.com", "password")
-db.add_trainer("Анна Смирнова", "Функциональный тренинг")
-db.add_membership(1, 1, "2022-01-01", "2022-12-31")
-db.add_workout(1, 1, "2022-01-01", 60)
+    def login(self, email, password):
+        query = "SELECT COUNT(*) FROM clients WHERE email = ? AND password = ?"
+        self.cursor.execute(query, (email, password))
+        result = self.cursor.fetchone()
 
-workouts_by_trainer = db.get_workout_by_trainer(1)
-workouts_by_client = db.get_workout_by_client(1)
+        if result[0] > 0:
+            print("Вы успешно вошли в систему.")
+        else:
+            print("Неверный email или пароль.")
 
-print(workouts_by_trainer)
-print(workouts_by_client)
+    def handle_error(self, error):
+        print("Произошла ошибка:", error)
 
-Client.login(db)
+db = FitnClub()
+
+try:
+    db.register("Ivan Ivanov", 30, "ivanivanov@example.com", "password123")
+    db.login("ivanivanov@example.com", "password123")
+except Exception as e:
+    db.handle_error(e)
